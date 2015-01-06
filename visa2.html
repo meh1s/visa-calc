@@ -1,0 +1,195 @@
+<!--
+by Mehis Küla
+2014
+https://code.google.com/p/datepickr/ - used for calendar for picking dates
+-->
+<html>
+	<head>
+		<title>Schengen Visa calculator</title>
+        <meta charset="utf-8">
+        <link rel="stylesheet" type="text/css" href="visafiles/datepickr.css">
+        <style type="text/css">
+            body{
+                background-color:#a8f4f4;
+                align-items:center;
+            }
+            h1{
+                text-align:center;
+            }
+            .text{
+                text-align:center;
+                font-size:120%;
+            }
+        </style>
+        <script>
+            //creates new cell's as needed and counts how many are there
+            function cellCreator(){
+                //check if storage is supported by the browser, if not, than suggest google chrome
+                if(typeof(Storage)!=="undefined"){
+                    sessionStorage.cells=Number(sessionStorage.cells)+1;
+                    oldData="<tr>\n<th>Entry:</th>\n<th>Exit:</th>\n<th>Stay:</th>\n</tr>";
+                    //if there are more than 1 line, than do some tricks to keep data
+                    if(sessionStorage.cells>1){
+                        i = sessionStorage.cells;
+                        for(u=1;u<parseInt(sessionStorage.cells);u++){
+                            entryValue = "entry"+u;
+                            exitValue = "exit"+u;
+                            oldData+="\n<tr"+u+">\n<td><input type='text' id='entry"+u+"' size='10' value='"+document.getElementById(entryValue).value+"'></td>\n<td><input type='text' id='exit"+u+"' size='10' value='"+document.getElementById(exitValue).value+"'></td>\n<td id='days"+u+"'></td>\n</tr>"
+                        }
+                        newData = "\n<tr"+i+">\n<td><input type='text' id='entry"+i+"' size='10' ></td>\n<td><input type='text' id='exit"+i+"' size='10'></td>\n<td id='days"+i+"'></td>\n</tr>"
+                        document.getElementById("dataTable").innerHTML=oldData;
+                        document.getElementById("dataTable").innerHTML+=newData;
+                        for(u=1;u<parseInt(sessionStorage.cells)+1;u++){
+                            var entry ='entry'+u;
+                            var exit = 'exit'+u;
+                            new datepickr(entry, {
+				                'dateFormat': 'd.m.y'
+                            });
+                            new datepickr(exit, {
+				                'dateFormat': 'd.m.y'
+                            });
+                        }
+                    }
+                    if(sessionStorage.cells==1){
+                        i = sessionStorage.cells;
+                        document.getElementById("dataTable").innerHTML=oldData;
+                        document.getElementById("dataTable").innerHTML+= "\n<tr"+i+">\n<td><input type='text' id='entry"+i+"' size='10' ></td>\n<td><input type='text' id='exit"+i+"' size='10'></td>\n<td id='days"+i+"'></td>\n</tr>"
+                        for(u=1;u<parseInt(sessionStorage.cells)+1;u++){
+                            var entry ='entry'+u;
+                            var exit = 'exit'+u;
+                            new datepickr(entry, {
+				                'dateFormat': 'd.m.y'
+                            });
+                            new datepickr(exit, {
+				                'dateFormat': 'd.m.y'
+                            });
+                        }
+                    }
+                }else{
+                    alert("Sorry, your browser is not supporter! Try Google Chrome for example");
+                }
+            }
+            //reseting the page
+            function reset(){
+                sessionStorage.clear();
+                location.reload();
+            }
+            //converting text to date (from datepickr)
+            function converter(txt){
+                temp = txt.trim();
+                temp = temp.split(".", 3);
+                var answer = "20"+temp[2]+"-"+temp[1]+"-"+temp[0];
+                return answer;
+            }
+            //calculates differences between two dates
+            function differenceDays(a, b){ // a must be later (bigger/exit date)
+                var a_date = a;
+                var b_date = b;
+                var oneDay = 1000*60*60*24;
+                var a_ms = a_date.getTime();
+                var b_ms = b_date.getTime();
+                var difference_ms = a_ms - b_ms ;
+                var difference = Math.round(difference_ms/oneDay);
+                difference +=1;
+                return difference; //returns answer in days
+            }
+            //loads initial data
+            function initial(){
+                var today = new Date();
+                var time_back = new Date(); // calculating date 180 days ago
+                time_back.setDate(time_back.getDate()-180);
+                var time_back_text = time_back.getDate()+"."+(time_back.getMonth()+1)+"."+time_back.getFullYear();
+                today_text = today.getDate()+"."+(today.getMonth()+1)+"."+today.getFullYear();
+                document.getElementById("head").innerHTML = "Today is: "+today_text+"<br> 180 days ago was: "+time_back_text;
+            }
+            //on CLICKING SUBMIT this happens
+            function main(){
+                var oldestEntry = new Date();
+                var visa = document.getElementById("visaDays").value;
+                if(isNaN(visa)==true||visa<1||visa>90){
+                    alert("Visa length is not correct");
+                    return;
+                }
+                var days = 0;
+                for(i=1; i<parseInt(sessionStorage.cells)+1; i++){
+                    var entry_text = converter(document.getElementById("entry"+i).value);
+                    var entry_date = new Date(entry_text);
+                    var exit_text = converter(document.getElementById("exit"+i).value);
+                    var exit_date = new Date(exit_text);
+                    //check, if entry/exit are within last 180 days
+                    var time_back = new Date(); // calculating date 180 days ago
+                    time_back.setDate(time_back.getDate()-181);
+                    //both were after 180 days
+                    if(entry_date>time_back && exit_date>time_back){
+                        if(entry_date<oldestEntry){
+                            oldestEntry = entry_date;
+                        }
+                        var duration = differenceDays(exit_date, entry_date);
+                        if(isNaN(duration)==false){
+                        days+=duration;
+                        document.getElementById("tottalDays").innerHTML = "Total days in Schengen area: "+days;
+                        document.getElementById("remainingDays").innerHTML = "Days remaining on the visa: "+(visa-days);
+                        if((visa-days)<0){
+                            alert("Overstay "+((visa-days)/(-1))+" days!")
+                        }
+                        document.getElementById("days"+i).innerHTML = duration;
+                    }
+                    }
+                    //entry was before 180, but exit wasn't
+                    if(entry_date<time_back && exit_date>time_back){
+                        oldestEntry=time_back;
+                        var duration = differenceDays(exit_date, time_back);
+                        if(isNaN(duration)==false){
+                        days+=duration;
+                        document.getElementById("tottalDays").innerHTML = "Total days in Schengen area: "+days;
+                        document.getElementById("remainingDays").innerHTML = "Days remaining on the visa: "+(visa-days);
+                        if((visa-days)<0){
+                            alert("Overstay "+((visa-days)/(-1))+" days!")
+                        }
+                        document.getElementById("days"+i).innerHTML = duration;
+                    }
+                    }
+                    //both were before 180 days
+                    if(entry_date<time_back && exit_date<time_back){
+                        document.getElementById("days"+i).innerHTML = "before";
+                    }
+                }
+                //calculates next legal date for entry
+                var today = new Date();
+                var next_date = new Date();
+                //if there are still days left on visa, than next date is tomorrow
+                if(days < visa){
+                    next_date.setDate(next_date.getDate()+1);
+                    var next_text = next_date.getDate()+"."+(next_date.getMonth()+1)+"."+next_date.getFullYear();
+                }
+                //if there are no more visa days, calculate new date
+                if(days==visa){
+                    next_date.setDate(oldestEntry.getDate()+179);
+                    var next_text = next_date.getDate()+"."+(next_date.getMonth()+1)+"."+next_date.getFullYear();
+                }
+                document.getElementById("nextEntry").innerHTML = "Next legal entry date: "+next_text;            
+            }
+        </script>
+    </head>
+    <body>
+        <h1>Schengen Visa calculator version 0.2</h1>
+        <div id="head" class="text"></div>
+        <div id="tottalDays" class="text">Total days in Schengen area: generated automaticaly</div>
+        <div id="remainingDays" class="text">Days remaining on the visa: generated automaticaly</div>
+        <div id="nextEntry" class="text">Next legal entry date: generated automaticaly</div>
+        <div class="text">Insert the lengt of visa (1-90):<input size="10" type="number" min="0" max="90" id="visaDays"></div>
+        <table align="center" border="1" id="dataTable">
+        </table>
+        <div class="text">
+            <input type="button" value="Add row" onclick="cellCreator()">
+            <input type="button" value="Reset" onclick="reset()">
+            <input type="button" value="Submit" onclick="main()">
+        </div>
+        
+    <script type="text/javascript" src="visafiles/datepickr.min.js"></script>
+    <script>sessionStorage.cells=0;
+        initial();
+        cellCreator();
+    </script>
+    </body>
+</html>              
